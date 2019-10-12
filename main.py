@@ -1,62 +1,88 @@
-from nltk.tokenize import sent_tokenize, word_tokenize
-from nltk.corpus import stopwords 
-from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+import pandas as pd
+import numpy as np
+from nltk.tokenize import word_tokenize
+from nltk import pos_tag
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from sklearn.preprocessing import LabelEncoder
+from collections import defaultdict
+from nltk.corpus import wordnet as wn
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn import model_selection, naive_bayes, svm
+from sklearn.metrics import accuracy_score
 
-import csv 
-import re 
+np.random.seed(500)
 
-reader = csv.reader(
-	open("KomentarSample.csv"), delimiter=";")
+Corpus = pd.read_csv(r"corpus.csv",encoding='latin-1')
 
-katabaku = csv.reader(
-	open("kata_baku.csv"), delimiter=";") # ambil file csv kata baku menjadi array
+Corpus['text'].dropna(inplace=True)
+Corpus['text']= [word_tokenize(entry) for entry in Corpus['text']]
 
-kamus_katabaku = {} # empty dictionary untuk kamus kata baku
+def TokenLemma(text): 
+    g = word_tokenize(text)
 
-for row in katabaku : # membuat kamus kata baku dengan input kata tidak baku dan output kata bakunya
-	kamus_katabaku[row[1]] = row[0]
+    tag_map = defaultdict(lambda : wn.NOUN)
+    tag_map['J'] = wn.ADJ
+    tag_map['V'] = wn.VERB
+    tag_map['R'] = wn.ADV
 
-komentar = [] # list berisikan semua komentar. 
+    Final_words = []
+    # Initializing WordNetLemmatizer()
+    word_Lemmatized = WordNetLemmatizer()
+    # pos_tag function below will provide the 'tag' i.e if the word is Noun(N) or Verb(V) or something else.
+    for word, tag in pos_tag(g):
+        # Below condition is to check for Stop words and consider only alphabets
+        if word not in stopwords.words('english') and word.isalpha():
+            word_Final = word_Lemmatized.lemmatize(word,tag_map[tag[0]])
+            Final_words.append(word_Final)
 
-listStopword = set(stopwords.words('indonesian')) #list kataa kata yang tidak bermakana dalam bahasa indonesia
-factory = StemmerFactory()
-stemmer = factory.create_stemmer()
+    return Final_words
 
-for row in reader : #melakukan perulangan pada setiap baris komentar	
-	
-	print("SEBELUM : ")
-	print(row[1])
-	print()
+# WordNetLemmatizer requires Pos tags to understand if the word is noun or verb or adjective etc. By default it is set to Noun
+tag_map = defaultdict(lambda : wn.NOUN)
+tag_map['J'] = wn.ADJ
+tag_map['V'] = wn.VERB
+tag_map['R'] = wn.ADV
+for index,entry in enumerate(Corpus['text']):
+    print(entry)
+    # Declaring Empty List to store the words that follow the rules for this step
+    Final_words = []
+    # Initializing WordNetLemmatizer()
+    word_Lemmatized = WordNetLemmatizer()
+    # pos_tag function below will provide the 'tag' i.e if the word is Noun(N) or Verb(V) or something else.
+    for word, tag in pos_tag(entry):
+        # Below condition is to check for Stop words and consider only alphabets
+        if word not in stopwords.words('english') and word.isalpha():
+            word_Final = word_Lemmatized.lemmatize(word,tag_map[tag[0]])
+            Final_words.append(word_Final)
+    # The final processed set of words for each iteration will be stored in 'text_final'
+    Corpus.loc[index,'text_final'] = str(Final_words)
 
-	kom = re.sub('[^A-Za-z]+',' ', row[1]) # cleansing (regex) mengahpus tanda baca dan angka
-	kom = kom.lower()# case folding (semua ke lower case)
+# train and test dataset split 
+Train_X, Test_X, Train_Y, Test_Y = model_selection.train_test_split(Corpus['text_final'],Corpus['label'],test_size=0.3)
 
-	tokens = word_tokenize(kom) #tokenize, kalimat jadi array kata 
+print("Test_Y before encoding : ", Test_Y)
+# label encoding
+Encoder = LabelEncoder()
+Train_Y = Encoder.fit_transform(Train_Y)
+Test_Y = Encoder.fit_transform(Test_Y)
 
-	removed = []
-	for t in tokens:  #loop nyebutin setiap kata pada kalimat 
-		
-		try : 
-			t = kamus_katabaku[t] # proses normalisasi, pemetaan kata non baku ke baku.
-		except :
-			pass  
+print("Test_Y after encoding : ", Test_Y)
 
-		# negation handling (besok)
-		
-		if t not in listStopword: # jika kata itu gaada di listStopword berarti kata penting
-			removed.append(t)
+Tfidf_vect = TfidfVectorizer(max_features=5000)
+Tfidf_vect.fit(Corpus['text_final'])
+Train_X_Tfidf = Tfidf_vect.transform(Train_X)
+Test_X_Tfidf = Tfidf_vect.transform(Test_X)
 
-	removed = " ".join(removed)
-	katadasar = stemmer.stem(removed)
+# Classifier - Algorithm - SVM
+# fit the training dataset on the classifier
+SVM = svm.SVC(C=1.0, kernel='linear', degree=3, gamma='auto')
+SVM.fit(Train_X_Tfidf,Train_Y)
 
+print(Test_X)
 
-	print("SESUDAH : ")
-	print(removed) #kenapa print ditaro disini biar setiap proses dilangsung mengularkan output dan kebaris selanjutnya
-	print("-----------------------------------")
-
-	komentar.append(removed) 
-
-#komentar.pop(0) # menghapus judul kolom pada file csv
-
-
-
+# predict the labels on validation dataset
+predictions_SVM = SVM.predict(Test_X_Tfidf)
+print(predictions_SVM)
+# Use accuracy_score function to get the accuracy
+print("SVM Accuracy Score -> ",accuracy_score(predictions_SVM, Test_Y)*100)

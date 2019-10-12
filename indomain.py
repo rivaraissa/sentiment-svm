@@ -1,0 +1,95 @@
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords 
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn import model_selection, svm
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
+
+import csv 
+import re 
+
+Corpus = pd.read_csv('LabeledSampleComment.csv', encoding='latin-1')
+np.random.seed(500)
+
+katabaku = csv.reader(
+	open("kata_baku.csv"), delimiter=";") # ambil file csv kata baku menjadi array
+
+kamus_katabaku = {} # empty dictionary untuk kamus kata baku
+
+for row in katabaku : # membuat kamus kata baku dengan input kata tidak baku dan output kata bakunya
+	kamus_katabaku[row[1]] = row[0]
+
+
+Corpus['text'].dropna(inplace=True)
+
+komentar = [] # list berisikan semua komentar. 
+
+listStopword = set(stopwords.words('indonesian')) #list kataa kata yang tidak bermakana dalam bahasa indonesia
+factory = StemmerFactory()
+stemmer = factory.create_stemmer()
+
+for index,row in enumerate(Corpus['text']): #melakukan perulangan pada setiap baris komentar	
+    
+    kom = re.sub('[^A-Za-z]+',' ', row) # cleansing (regex) mengahpus tanda baca dan angka
+    kom = kom.lower()# case folding (semua ke lower case)
+
+    tokens = word_tokenize(kom) #tokenize, kalimat jadi array kata 
+
+    removed = []
+    for t in tokens:  #loop nyebutin setiap kata pada kalimat 
+            
+            try : 
+                t = kamus_katabaku[t] # proses normalisasi, pemetaan kata non baku ke baku.
+            except :
+                pass  
+
+            # negation handling (besok)
+            
+            if t not in listStopword: # jika kata itu gaada di listStopword berarti kata penting
+                removed.append(t)
+
+    removed = " ".join(removed)
+    katadasar = stemmer.stem(removed)
+    katadasar = katadasar.split(' ')
+    #komentar.append(removed) 
+    print(katadasar)
+    Corpus.loc[index,'text_final'] = str(katadasar)
+
+#komentar.pop(0) # menghapus judul kolom pada file csv
+
+
+print(Corpus['text_final'])
+
+# train and test dataset split 
+Train_X, Test_X, Train_Y, Test_Y = model_selection.train_test_split(Corpus['text_final'],Corpus['label'],test_size=0.3)
+
+print("Test_Y before encoding : ", Test_Y)
+# label encoding
+Encoder = LabelEncoder()
+Train_Y = Encoder.fit_transform(Train_Y)
+Test_Y = Encoder.fit_transform(Test_Y)
+
+print("Test_Y after encoding : ", Test_Y)
+
+Tfidf_vect = TfidfVectorizer(max_features=5000)
+Tfidf_vect.fit(Corpus['text_final'])
+Train_X_Tfidf = Tfidf_vect.transform(Train_X)
+Test_X_Tfidf = Tfidf_vect.transform(Test_X)
+
+print(Train_X_Tfidf)
+
+# Classifier - Algorithm - SVM
+# fit the training dataset on the classifier
+SVM = svm.SVC(C=1.0, kernel='linear', degree=3, gamma='auto')
+SVM.fit(Train_X_Tfidf,Train_Y)
+
+print(Test_X)
+# predict the labels on validation dataset
+predictions_SVM = SVM.predict(Test_X_Tfidf)
+print(predictions_SVM)
+
+# Use accuracy_score function to get the accuracy
+print("SVM Accuracy Score -> ",accuracy_score(predictions_SVM, Test_Y)*100)
