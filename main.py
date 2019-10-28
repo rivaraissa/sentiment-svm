@@ -10,6 +10,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import model_selection, svm
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import confusion_matrix
 
 from JSONUpdater import JSONUpdater
 from ImportDataset import ImportDataset
@@ -104,7 +105,23 @@ real_pos_percentage = (real_count_pos_neg[label_positive]/len(realData_Y))*100
 real_neg_percentage = (real_count_pos_neg[label_negative]/len(realData_Y))*100
 
 Tfidf_vect = TfidfVectorizer(max_features=5000)
+
 Tfidf_vect.fit(Corpus['text_final'])
+
+print()
+print("selected words as feature : ")
+print("----------------------------")
+print(Tfidf_vect.get_feature_names())
+print()
+
+print("jumlah data training : ")
+print(len(Train_X))
+print()
+
+print("jumlah data test : ") 
+print(len(Test_X))
+print() 
+
 Train_X_Tfidf = Tfidf_vect.transform(Train_X)
 Test_X_Tfidf = Tfidf_vect.transform(Test_X)
 AllData_X_Tfidf = Tfidf_vect.transform(Corpus['text'])
@@ -177,6 +194,10 @@ print()
 
 outputJson = svm.mergeJSON(predictions_all, importData.toJSON())
 print(outputJson)
+
+conf_matrix = confusion_matrix(Test_Y, predictions_SVM)
+print("Confusion Matrix : ") 
+print(conf_matrix)
 
 create_json.write_result(outputJson)
 create_json.set_percentage(
