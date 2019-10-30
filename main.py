@@ -74,7 +74,8 @@ for index,row in enumerate(Corpus['text']): #melakukan perulangan pada setiap ba
 
     removed = " ".join(removed)
     katadasar = stemmer.stem(removed)
-    katadasar = katadasar.split(' ')
+    #katadasar = katadasar.split(' ')
+    katadasar = word_tokenize(katadasar)
     #komentar.append(removed) 
     print(katadasar)
     Corpus.loc[index,'text_final'] = str(katadasar)
@@ -84,7 +85,7 @@ for index,row in enumerate(Corpus['text']): #melakukan perulangan pada setiap ba
 print(Corpus['text_final'])
 
 # train and test dataset split 
-Train_X, Test_X, Train_Y, Test_Y = model_selection.train_test_split(Corpus['text_final'],Corpus['label'],test_size=0.1)
+Train_X, Test_X, Train_Y, Test_Y = model_selection.train_test_split(Corpus['text_final'],Corpus['label'],test_size=0.2)
 
 # label encoding
 Train_Y = Encoder.fit_transform(Train_Y)

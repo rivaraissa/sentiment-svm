@@ -5,7 +5,7 @@ import json
 class SVM :
 
     def __init__(self):
-        self.SVM = svm.SVC(C=1.0, kernel='linear', degree=3, gamma='auto')
+        self.SVM = svm.SVC(C=0.8, kernel='linear', degree=3, gamma='auto')
         self.encodeDict = {
                     0 : "negative",
                     1 : "positive"
