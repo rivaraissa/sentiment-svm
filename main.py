@@ -5,6 +5,7 @@ from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 import pandas as pd
 import numpy as np
 import collections
+import itertools 
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import model_selection, svm
@@ -61,18 +62,20 @@ for index,row in enumerate(Corpus['text']): #melakukan perulangan pada setiap ba
     for t in tokens:  #loop nyebutin setiap kata pada kalimat 
             
             try : 
+                t = ''.join(ch for ch, _ in itertools.groupby(t))
                 t = kamus_katabaku[t] # proses normalisasi, pemetaan kata non baku ke baku.
             except :
                 pass  
-
+                
             # negation handling (besok)
-            
-            if t not in listStopword: # jika kata itu gaada di listStopword berarti kata penting
+                
+            if t not in listStopword and len(t) > 2: # jika kata itu gaada di listStopword berarti kata penting
                 removed.append(t)
 
     removed = " ".join(removed)
     katadasar = stemmer.stem(removed)
-    katadasar = katadasar.split(' ')
+    #katadasar = katadasar.split(' ')
+    katadasar = word_tokenize(katadasar)
     #komentar.append(removed) 
     print(katadasar)
     Corpus.loc[index,'text_final'] = str(katadasar)
@@ -82,7 +85,7 @@ for index,row in enumerate(Corpus['text']): #melakukan perulangan pada setiap ba
 print(Corpus['text_final'])
 
 # train and test dataset split 
-Train_X, Test_X, Train_Y, Test_Y = model_selection.train_test_split(Corpus['text_final'],Corpus['label'],test_size=0.3)
+Train_X, Test_X, Train_Y, Test_Y = model_selection.train_test_split(Corpus['text_final'],Corpus['label'],test_size=0.2)
 
 # label encoding
 Train_Y = Encoder.fit_transform(Train_Y)
@@ -158,6 +161,7 @@ all_svm_count_pos_neg = collections.Counter(predictions_all)
 all_svm_pos_percentage = (all_svm_count_pos_neg[label_positive]/len(predictions_all))*100
 all_svm_neg_percentage = (all_svm_count_pos_neg[label_negative]/len(predictions_all))*100  
 
+'''
 # real data label percentage
 print("REAL PERCENTAGE ")
 print("-------------------------------------")
@@ -191,9 +195,10 @@ print("-------------------------------------")
 print("label pos :", all_svm_pos_percentage)
 print("label neg :", all_svm_neg_percentage)
 print()
+'''
 
 outputJson = svm.mergeJSON(predictions_all, importData.toJSON())
-print(outputJson)
+#print(outputJson)
 
 conf_matrix = confusion_matrix(Test_Y, predictions_SVM)
 print("Confusion Matrix : ") 
