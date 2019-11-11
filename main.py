@@ -28,7 +28,7 @@ create_json = JSONUpdater()
 svm = SVM()
 
 importData = ImportDataset() 
-importData.readCsv('komentar_manually_processed.csv')
+importData.readCsv('export_dataframe.csv')
 
 Corpus = importData.getCorpus() 
 
