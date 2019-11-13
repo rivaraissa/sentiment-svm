@@ -28,7 +28,8 @@ create_json = JSONUpdater()
 svm = SVM()
 
 importData = ImportDataset() 
-importData.readCsv('komentar.csv')
+importData.readCsv('export_dataframe.csv')
+
 Corpus = importData.getCorpus() 
 
 np.random.seed(500)

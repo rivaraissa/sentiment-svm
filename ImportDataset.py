@@ -9,7 +9,7 @@ class ImportDataset :
         self.label = ''
 
     def readCsv(self, csvUrl):
-        self.corpus = pd.read_csv('komentar.csv', encoding='latin-1') 
+        self.corpus = pd.read_csv(csvUrl, encoding='latin-1') 
         self.text = self.corpus['text']
         self.label = self.corpus['label'] 
 
